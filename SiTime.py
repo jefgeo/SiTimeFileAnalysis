@@ -7,29 +7,39 @@ writer = pd.ExcelWriter("summary.xlsx")
 directory = './Data/'
 
 summary_columns = ['File_Name', 'Column_Name', 'Inferred_Type',
-                   'Populated', 'Uniuqe_Values', 'PctUnique',
+                   'Populated', 'Unique_Values', 'PctUnique',
                    'Nulls', 'PctMissing',
                    'Top_Values', 'mean', 'median', 'max', 'min']
 
+file_count = 0
+sheet_count = 0
 for file_name in os.listdir(directory):
 
-    if file_name.lower().endswith(".csv") or file_name.lower().endswith(".xlsx"):
+    if file_name.lower().endswith(".csv") \
+            or file_name.lower().endswith(".xlsx") \
+            or file_name.lower().endswith(".xls"):
         print(file_name)
-
+        file_count += 1
         if file_name.lower().endswith(".csv"):
             sheet_list = ['.csv']
-        elif file_name.lower().endswith(".xls") or file_name.lower().endswith(".xlsx"):
+        elif file_name.lower().endswith(".xlsx"):
             xls = load_workbook('{}{}'.format(directory, file_name), read_only=True, keep_links=False)
             sheet_list = xls.sheetnames
+        elif file_name.lower().endswith(".xls"):
+            sheet_list = ['.xls']
+
 
         summary = []
 
         for sheet in sheet_list:
+            sheet_count += 1
             print(sheet)
             if file_name.lower().endswith(".csv"):
                 df = pd.read_csv('{}{}'.format(directory, file_name), low_memory=False, quotechar='"')
-            else:
+            elif file_name.lower().endswith(".xlsx"):
                 df = pd.read_excel('{}{}'.format(directory, file_name), sheet_name=sheet)
+            elif file_name.lower().endswith(".xls"):
+                df = pd.read_excel('{}{}'.format(directory, file_name))
 
             top_freq = {}
 
@@ -59,8 +69,8 @@ for file_name in os.listdir(directory):
                 entry = [file_name+' | '+sheet if sheet != '.csv' else file_name,
                         col_name_lower, df[col].dtypes,
                         len(df) - missing_count,
-                        unique_values, unique_values / len(df),
-                        missing_count, missing_count / len(df),
+                        unique_values, unique_values / len(df) if len(df) > 0 else 0,
+                        missing_count, missing_count / len(df) if len(df) > 0 else 0,
                         top_values,
                         (stats["mean"] if "mean" in stats else ''),
                         (stats["median"] if "median" in stats else ''),
@@ -70,4 +80,5 @@ for file_name in os.listdir(directory):
 
         summary_df = pd.DataFrame(summary, columns=summary_columns)
         summary_df.to_excel(writer, header=True, sheet_name=file_name[0:30], index=False)
+print('Processed {} Files with a total of {} Sheets'.format(file_count, sheet_count))
 writer.close()
